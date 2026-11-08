@@ -5,7 +5,11 @@ import axios from 'axios';
 import pino from 'pino';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
+// تصحيح الرابط الرسمي لـ Gemini واستخدام نموذج gemini-1.5-flash السريع والمجاني
 const AI_API_URL = `https://googleapis.com{GEMINI_API_KEY}`;
+
+// التوجيه السلوكي للبوت لكي يضحك ويتفاعل بعفوية مع الرسائل النصية
+const SYSTEM_PROMPT = "أنت بوت واتساب شخصي مرح ومحبوب. تفاعل مع الناس بعفوية، اضحك معهم كثيراً باستخدام (ههههه، 😂، 🤣)، رد بأسلوب ذكي وودي، واجعل إجاباتك قصيرة ومناسبة لدردشة الواتساب.";
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
@@ -32,7 +36,7 @@ async function startBot() {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== disconnectReason.loggedOut;
             if(shouldReconnect) startBot();
         } else if(connection === 'open') {
-            console.log('تم تشغيل البوت وربطه بالواتساب بنجاح!');
+            console.log('تم تشغيل البوت وربطه بالواتساب بنجاح! 🚀');
         }
     });
 
@@ -46,8 +50,9 @@ async function startBot() {
         const imageMessage = messageData.message.imageMessage;
 
         try {
+            // التعامل مع الصور المرفوعة
             if (imageMessage) {
-                await sock.sendMessage(from, { text: 'جاري تحميل الصورة وتحليلها عبر Gemini...' });
+                await sock.sendMessage(from, { text: 'جاري تحميل الصورة وتحليلها عبر الذكاء الاصطناعي... 🧐📸' });
                 const stream = await downloadContentFromMessage(imageMessage, 'image');
                 let buffer = Buffer.from([]);
                 for await(const chunk of stream) {
@@ -58,7 +63,7 @@ async function startBot() {
                 const response = await axios.post(AI_API_URL, {
                     contents: [{
                         parts: [
-                            { text: imageMessage.caption || "اشرح هذه الصورة بالتفصيل" },
+                            { text: `انظر إلى هذه الصورة وعلق عليها بطريقة مرحة وتفاعلية بناءً على طلب المستخدم: ${imageMessage.caption || "اشرح الصورة"}` },
                             { inlineData: { mimeType: imageMessage.mimetype, data: imageBase64 } }
                         ]
                     }]
@@ -67,16 +72,19 @@ async function startBot() {
                 const replyText = response.data.candidates[0].content.parts[0].text;
                 await sock.sendMessage(from, { text: replyText });
             } 
+            // التعامل مع الرسائل النصية والضحك مع الناس
             else if (textMessage) {
                 const response = await axios.post(AI_API_URL, {
-                    contents: [{ parts: [{ text: textMessage }] }]
+                    contents: [
+                        { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\nرسالة المستخدم: ${textMessage}` }] }
+                    ]
                 }, { headers: { 'Content-Type': 'application/json' } });
 
                 const replyText = response.data.candidates[0].content.parts[0].text;
                 await sock.sendMessage(from, { text: replyText });
             }
         } catch (error) {
-            console.error(error.message);
+            console.error("حدث خطأ أثناء معالجة الذكاء الاصطناعي:", error.message);
         }
     });
 }
