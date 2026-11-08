@@ -1,5 +1,5 @@
 import baileys from '@whiskeysockets/baileys';
-const { default: makeWASocket, useMultiFileAuthState, disconnectReason, makeCacheableSignalKeyStore } = baileys;
+const { default: makeWASocket, useMultiFileAuthState, disconnectReason, makeCacheableSignalKeyStore, downloadContentFromMessage } = baileys;
 import qrcode from 'qrcode-terminal';
 import axios from 'axios';
 import pino from 'pino';
@@ -8,8 +8,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const AI_API_URL = `https://googleapis.com{GEMINI_API_KEY}`;
 
 async function startBot() {
-    // جلب دالة التنزيل بالطريقة المتوافقة مع النظام الجديد
-    const { downloadContentFromMessage } = baileys;
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     
     const sock = makeWASocket({
@@ -42,9 +40,10 @@ async function startBot() {
         const msg = m.messages;
         if (!msg[0].message || msg[0].key.fromMe) return;
 
-        const from = msg[0].key.remoteJid;
-        const textMessage = msg[0].message.conversation || msg[0].message.extendedTextMessage?.text;
-        const imageMessage = msg[0].message.imageMessage;
+        const messageData = msg[0];
+        const from = messageData.key.remoteJid;
+        const textMessage = messageData.message.conversation || messageData.message.extendedTextMessage?.text;
+        const imageMessage = messageData.message.imageMessage;
 
         try {
             if (imageMessage) {
