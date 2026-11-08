@@ -8,6 +8,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const AI_API_URL = `https://googleapis.com{GEMINI_API_KEY}`;
 
 async function startBot() {
+    // جلب دالة التنزيل بالطريقة المتوافقة مع النظام الجديد
+    const { downloadContentFromMessage } = baileys;
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     
     const sock = makeWASocket({
@@ -47,8 +49,7 @@ async function startBot() {
         try {
             if (imageMessage) {
                 await sock.sendMessage(from, { text: 'جاري تحميل الصورة وتحليلها عبر Gemini...' });
-                const { downloadContentFromMessage: dl } = baileys;
-                const stream = await dl(imageMessage, 'image');
+                const stream = await downloadContentFromMessage(imageMessage, 'image');
                 let buffer = Buffer.from([]);
                 for await(const chunk of stream) {
                     buffer = Buffer.concat([buffer, chunk]);
