@@ -1,7 +1,8 @@
-const { default: makeWASocket, useMultiFileAuthState, disconnectReason, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
-const axios = require('axios');
-const pino = require('pino');
+import baileys from '@whiskeysockets/baileys';
+const { default: makeWASocket, useMultiFileAuthState, disconnectReason, makeCacheableSignalKeyStore } = baileys;
+import qrcode from 'qrcode-terminal';
+import axios from 'axios';
+import pino from 'pino';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
 const AI_API_URL = `https://googleapis.com{GEMINI_API_KEY}`;
@@ -31,22 +32,22 @@ async function startBot() {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== disconnectReason.loggedOut;
             if(shouldReconnect) startBot();
         } else if(connection === 'open') {
-            console.log('تم تشغيل البوت وربطه بالواتساب بنجاح بواسطة Baileys!');
+            console.log('تم تشغيل البوت وربطه بالواتساب بنجاح!');
         }
     });
 
     sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
+        const msg = m.messages;
+        if (!msg[0].message || msg[0].key.fromMe) return;
 
-        const from = msg.key.remoteJid;
-        const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
-        const imageMessage = msg.message.imageMessage;
+        const from = msg[0].key.remoteJid;
+        const textMessage = msg[0].message.conversation || msg[0].message.extendedTextMessage?.text;
+        const imageMessage = msg[0].message.imageMessage;
 
         try {
             if (imageMessage) {
                 await sock.sendMessage(from, { text: 'جاري تحميل الصورة وتحليلها عبر Gemini...' });
-                const { downloadContentFromMessage: dl } = require('@whiskeysockets/baileys');
+                const { downloadContentFromMessage: dl } = baileys;
                 const stream = await dl(imageMessage, 'image');
                 let buffer = Buffer.from([]);
                 for await(const chunk of stream) {
