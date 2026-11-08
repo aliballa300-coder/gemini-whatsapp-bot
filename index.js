@@ -1,6 +1,7 @@
-const { default: makeWASocket, useMultiFileAuthState, disconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, disconnectReason, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
+const pino = require('pino');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
 const AI_API_URL = `https://googleapis.com{GEMINI_API_KEY}`;
@@ -9,8 +10,13 @@ async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     
     const sock = makeWASocket({
-        auth: state,
-        printQRInTerminal: false
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' }))
+        },
+        printQRInTerminal: false,
+        logger: pino({ level: 'fatal' }),
+        browser: ['Ubuntu', 'Chrome', '20.0.04']
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -40,8 +46,8 @@ async function startBot() {
         try {
             if (imageMessage) {
                 await sock.sendMessage(from, { text: 'جاري تحميل الصورة وتحليلها عبر Gemini...' });
-                
-                const stream = await downloadContentFromMessage(imageMessage, 'image');
+                const { downloadContentFromMessage: dl } = require('@whiskeysockets/baileys');
+                const stream = await dl(imageMessage, 'image');
                 let buffer = Buffer.from([]);
                 for await(const chunk of stream) {
                     buffer = Buffer.concat([buffer, chunk]);
@@ -72,11 +78,6 @@ async function startBot() {
             console.error(error.message);
         }
     });
-}
-
-async function downloadContentFromMessage(message, type) {
-    const { downloadContentFromMessage: dl } = require('@whiskeysockets/baileys');
-    return await dl(message, type);
 }
 
 startBot();
