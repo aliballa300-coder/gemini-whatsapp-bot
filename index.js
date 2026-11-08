@@ -1,14 +1,19 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
+const path = require('path');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
 const AI_API_URL = `https://googleapis.com{GEMINI_API_KEY}`;
 
+// تحديد مسار كروم تلقائياً داخل سيرفر ريندر
+const chromePath = path.join(process.env.HOME, '.cache', 'puppeteer', 'chrome', 'linux-146.0.7680.31', 'chrome-linux64', 'chrome');
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        executablePath: chromePath,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     }
 });
 
@@ -31,31 +36,20 @@ client.on('message', async (msg) => {
                 contents: [{
                     parts: [
                         { text: msg.body || "اشرح هذه الصورة بالتفصيل" },
-                        {
-                            inlineData: {
-                                mimeType: media.mimetype,
-                                data: media.data
-                            }
-                        }
+                        { inlineData: { mimeType: media.mimetype, data: media.data } }
                     ]
                 }]
-            }, {
-                headers: { 'Content-Type': 'application/json' }
-            });
+            }, { headers: { 'Content-Type': 'application/json' } });
 
-            const replyText = response.data.candidates[0].content.parts[0].text;
+            const replyText = response.data.candidates.content.parts.text;
             await msg.reply(replyText);
         } 
         else if (msg.type === 'chat') {
             const response = await axios.post(AI_API_URL, {
-                contents: [{
-                    parts: [{ text: msg.body }]
-                }]
-            }, {
-                headers: { 'Content-Type': 'application/json' }
-            });
+                contents: [{ parts: [{ text: msg.body }] }]
+            }, { headers: { 'Content-Type': 'application/json' } });
 
-            const replyText = response.data.candidates[0].content.parts[0].text;
+            const replyText = response.data.candidates.content.parts.text;
             await msg.reply(replyText);
         }
     } catch (error) {
